@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Office — AI Agent Management Simulation</title>
+  <meta name="description" content="Manage a chaotic virtual office of autonomous AI agents. Assign tasks, watch them collaborate, and generate real interactive apps, games, and concepts with Gemini.">
+  
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/modals.css">
+</head>
+<body>
+
+  <!-- Top App Header HUD -->
+  <header class="app-header">
+    <div class="brand-container">
+      <div class="brand-logo">🏢</div>
+      <div class="brand-title">Agent <span>Office</span></div>
+      <div class="brand-tag">v1.0 • Gemini 3.7</div>
+    </div>
+
+    <div class="hud-metrics">
+      <div class="metric-pill tokens" title="Office Budget / Tokens">
+        <span class="icon">🪙</span>
+        <span id="hud-tokens">500</span>
+      </div>
+      <div class="metric-pill" title="Active Roster">
+        <span class="icon">👥</span>
+        <span id="hud-agent-count">4 Agents</span>
+      </div>
+      <div class="metric-pill" title="Tasks In Progress">
+        <span class="icon">⚡</span>
+        <span id="hud-active-tasks">0 In Progress</span>
+      </div>
+    </div>
+
+    <div class="hud-actions">
+      <button class="btn btn-secondary btn-sm" id="btn-toggle-audio" title="Toggle Sound Effects">🔊 Audio On</button>
+      <button class="btn btn-secondary btn-sm" id="btn-open-creator">🎨 Custom Agent</button>
+      <button class="btn btn-secondary btn-sm" id="btn-open-decor">🪴 Decor Shop</button>
+      <button class="btn btn-secondary btn-sm" id="btn-open-collab">🤝 Co-op Hackathon</button>
+      <button class="btn btn-secondary btn-sm" id="btn-open-upgrades">⚡ Upgrades</button>
+      <button class="btn btn-secondary btn-sm" id="btn-open-hire">➕ Hire</button>
+      <button class="btn btn-secondary btn-sm" id="btn-open-settings">⚙️ Settings</button>
+      <button class="btn btn-primary btn-sm" id="btn-assign-task">✨ Assign Task</button>
+    </div>
+  </header>
+
+  <!-- Main 3-Column Layout -->
+  <main class="app-container">
+    
+    <!-- Left Sidebar: Agent Roster -->
+    <aside class="sidebar-left">
+      <div class="sidebar-header">
+        <span class="sidebar-title">Agent Roster</span>
+        <span style="font-size: 11px; color: var(--text-muted);">Click to inspect</span>
+      </div>
+      <div class="agent-roster-container" id="agent-roster-list">
+        <!-- Dynamically rendered agents -->
+      </div>
+    </aside>
+
+    <!-- Center: Interactive 2D Office Floor & Command Strip -->
+    <section class="office-viewport-container">
+      <div class="canvas-wrapper">
+        <canvas id="office-canvas"></canvas>
+      </div>
+
+      <!-- Selected Agent Quick Command Strip -->
+      <div class="selected-agent-strip">
+        <div class="selected-agent-details">
+          <div class="selected-agent-avatar" id="selected-agent-avatar" style="background-color: #3B82F6;">👓</div>
+          <div class="selected-agent-text">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="name" id="selected-agent-name">Byte "Zero-Bug" Boris</span>
+              <span class="agent-role-pill" id="selected-agent-role">Senior Systems Coder</span>
+            </div>
+            <div class="tagline" id="selected-agent-tagline">"Refactoring reality into O(1) complexity."</div>
+          </div>
+        </div>
+        <div class="selected-agent-actions">
+          <button class="btn btn-primary" id="btn-assign-selected">Assign Task to Boris</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Sidebar: Task Archive & Output Log -->
+    <aside class="sidebar-right">
+      <div class="sidebar-header">
+        <span class="sidebar-title">Output Archive</span>
+        <span style="font-size: 11px; color: var(--accent-cyan);">Saved in LocalStorage</span>
+      </div>
+      <div class="task-history-container" id="task-history-list">
+        <!-- Dynamically rendered completed tasks -->
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- 1. Task Assignment Modal -->
+  <div class="modal-overlay" id="modal-task-assign">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">✨ Dispatch Task to Agent</div>
+        <button class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <form id="task-assignment-form">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="task-agent-select">Assigned Agent</label>
+            <select class="form-select" id="task-agent-select"></select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Task Presets (Click to Load)</label>
+            <div class="presets-grid" id="task-presets-container">
+              <!-- Dynamically populated preset buttons -->
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="task-title-input">Task Title</label>
+            <input type="text" class="form-input" id="task-title-input" required placeholder="e.g. Build HTML5 Mini-Game">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="task-prompt-input">Task Prompt & Instructions</label>
+            <textarea class="form-textarea" id="task-prompt-input" required placeholder="Describe what the agent should create or solve..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">🚀 Send Agent to Work</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. Result Viewer & Live Sandbox Modal -->
+  <div class="modal-overlay" id="modal-result-viewer">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>🚀 Output: </span>
+          <span id="result-task-title" style="color: var(--accent-cyan); font-weight: 700;">Task Name</span>
+        </div>
+        <button class="modal-close" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="result-meta-bar">
+        <div>
+          <span>Completed by: </span>
+          <strong id="result-agent-name" style="color: var(--text-primary);">Agent Name</strong>
+        </div>
+        <div>
+          <span class="brand-tag" id="result-model-badge">gemini-3.7-flash</span>
+        </div>
+      </div>
+
+      <div id="result-notice-banner" class="notice-banner" style="display: none;"></div>
+
+      <div class="result-tabs-bar">
+        <button class="tab-btn active" id="tab-btn-sandbox">🎮 Live Interactive Sandbox</button>
+        <button class="tab-btn" id="tab-btn-markdown">📝 Formatted Doc</button>
+        <button class="tab-btn" id="tab-btn-code">💻 Raw Code / Source</button>
+      </div>
+
+      <div class="result-content-container">
+        <!-- Live Sandboxed Iframe (with sandbox="allow-scripts") -->
+        <div class="result-view-panel active" id="view-sandbox">
+          <iframe id="sandbox-iframe" sandbox="allow-scripts" title="Interactive Artifact Sandbox"></iframe>
+        </div>
+
+        <!-- Markdown Formatted View -->
+        <div class="result-view-panel" id="view-markdown">
+          <div class="markdown-body"></div>
+        </div>
+
+        <!-- Raw Code View -->
+        <div class="result-view-panel" id="view-code">
+          <pre><code id="code-output-text"></code></pre>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-copy-result">📋 Copy Output</button>
+        <button type="button" class="btn btn-secondary" id="btn-download-result">💾 Download Artifact</button>
+        <button type="button" class="btn btn-primary modal-close">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Office Upgrades Modal -->
+  <div class="modal-overlay" id="modal-upgrades">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">⚡ Office Hardware & Performance Upgrades</div>
+        <button class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="upgrades-grid" id="upgrades-list-container"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary modal-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Interactive Decor Shop Modal -->
+  <div class="modal-overlay" id="modal-decor">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">🪴 Interactive Office Decor & Fun Stations</div>
+        <button class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="upgrades-grid" id="decor-list-container"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary modal-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Custom Agent Creator Studio Modal -->
+  <div class="modal-overlay" id="modal-agent-creator">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">🎨 Agent Design Studio — Create Custom AI Persona</div>
+        <button class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <form id="agent-creator-form">
+        <div class="modal-body">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label" for="custom-name-input">Agent Name</label>
+              <input type="text" class="form-input" id="custom-name-input" required placeholder="e.g. Nova 'Hyper' Vance">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="custom-role-input">Role & Title</label>
+              <input type="text" class="form-input" id="custom-role-input" required placeholder="e.g. Quantum Game Dev">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="custom-tagline-input">Signature Catchphrase / Tagline</label>
+            <input type="text" class="form-input" id="custom-tagline-input" placeholder="e.g. 'Shipping bug-free physics at 240Hz.'">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label" for="custom-accessory-select">Accessory Emoji</label>
+              <select class="form-select" id="custom-accessory-select">
+                <option value="🕶️">🕶️ Shades</option>
+                <option value="🎧">🎧 DJ Headset</option>
+                <option value="👑">👑 Gold Crown</option>
+                <option value="🚀">🚀 Rocket</option>
+                <option value="🐱">🐱 Cyber Cat</option>
+                <option value="🧙‍♂️">🧙‍♂️ Code Wizard</option>
+                <option value="🦊">🦊 Fox</option>
+                <option value="⚡">⚡ Lightning</option>
+                <option value="🎨">🎨 Beret</option>
+                <option value="👓">👓 Classic Specs</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="custom-shirt-color">Shirt Color</label>
+              <input type="color" class="form-input" id="custom-shirt-color" value="#8B5CF6" style="height: 40px; padding: 2px;">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="custom-hair-color">Hair Color</label>
+              <input type="color" class="form-input" id="custom-hair-color" value="#1E293B" style="height: 40px; padding: 2px;">
+            </div>
+          </div>
+
+          <div class="form-group" style="background: var(--bg-surface-elevated); padding: 12px; border-radius: var(--radius-md);">
+            <label class="form-label">Personality & Performance Tuning</label>
+            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px;">
+              <div>
+                <label>⚡ Execution Speed</label>
+                <input type="range" id="custom-speed-slider" min="50" max="100" value="85" style="width: 100%;">
+              </div>
+              <div>
+                <label>🎨 Creative Flair</label>
+                <input type="range" id="custom-creativity-slider" min="50" max="100" value="90" style="width: 100%;">
+              </div>
+              <div>
+                <label>🔥 Chaos / Satire Level</label>
+                <input type="range" id="custom-chaos-slider" min="10" max="100" value="50" style="width: 100%;">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">✨ Spawn Agent into Office</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 6. Multi-Agent Co-op Hackathon Modal -->
+  <div class="modal-overlay" id="modal-collab-task">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">🤝 Multi-Agent Joint Hackathon</div>
+        <button class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <form id="collab-assignment-form">
+        <div class="modal-body">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label" for="collab-lead-select">Agent 1 (Tech Lead)</label>
+              <select class="form-select" id="collab-lead-select"></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="collab-co-select">Agent 2 (Creative/Co-Lead)</label>
+              <select class="form-select" id="collab-co-select"></select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Collaborative Challenge Templates</label>
+            <div class="presets-grid" id="collab-presets-container"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="collab-title-input">Hackathon Title</label>
+            <input type="text" class="form-input" id="collab-title-input" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="collab-prompt-input">Joint Directive & Objectives</label>
+            <textarea class="form-textarea" id="collab-prompt-input" required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">🚀 Launch Dual-Agent Session</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. Hire New Agent Modal -->
+  <div class="modal-overlay" id="modal-hire">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">➕ AI Talent Acquisition Pool</div>
+        <button class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="candidates-grid" id="hire-candidates-container">
+          <!-- Dynamically populated candidates -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary modal-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Settings / Gemini API Key Modal -->
+  <div class="modal-overlay" id="modal-settings">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">⚙️ LLM Engine Settings</div>
+        <button class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="gemini-api-key-input">Google Gemini API Key (Optional)</label>
+          <input type="password" class="form-input" id="gemini-api-key-input" placeholder="AIzaSy...">
+          <p style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+            Leave blank to use the built-in intelligent simulated offline generator with instant response times, or enter your API key to generate live code & answers directly from Gemini 3.7. Keys are saved strictly in your browser's LocalStorage.
+          </p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="gemini-model-select">Primary Gemini Model</label>
+          <select class="form-select" id="gemini-model-select">
+            <!-- Dynamically populated models with gemini-3.7-flash as default -->
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-save-settings">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container">
+    <div class="toast" id="game-toast">
+      <div class="toast-title">Notification</div>
+      <div class="toast-body">Message text here</div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
